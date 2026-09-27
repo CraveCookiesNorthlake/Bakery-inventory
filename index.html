@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bakery Inventory & Rotation AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        bakery: {
+                            50: '#fffbf5',
+                            100: '#fef5e7',
+                            200: '#fde6c8',
+                            300: '#fbd19b',
+                            400: '#f8af65',
+                            500: '#f58d34',
+                            600: '#e66f1b',
+                            700: '#bf5114',
+                            800: '#984018',
+                            900: '#7b3617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Spreadsheet Feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .tab-active {
+            border-bottom: 3px solid #f58d34;
+            color: #f58d34;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-800 bg-slate-50 dark:bg-slate-900 dark:text-slate-100 flex flex-col min-h-screen">
+
+    <!-- Header Navbar -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center space-x-3">
+                <div class="bg-bakery-500 text-white p-2 rounded-xl shadow-md">
+                    <i data-lucide="cookie" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        BakeEngine <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-bakery-100 text-bakery-800 dark:bg-bakery-900/50 dark:text-bakery-300">Single Branch AI</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Weekly Rotation Inventory & Advance Ordering Engine</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Stats & Controls -->
+            <div class="flex items-center space-x-4">
+                <button onclick="exportData()" class="text-xs flex items-center gap-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i> Backup Data
+                </button>
+                <button onclick="resetToDefaults()" class="text-xs flex items-center gap-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2 py-1.5 rounded-lg transition" title="Reset Demo Data">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 border-t border-slate-100 dark:border-slate-700/50 overflow-x-auto">
+            <button onclick="switchTab('inventory')" id="tab-inventory" class="tab-btn tab-active py-3 px-1 text-sm flex items-center gap-2 whitespace-nowrap">
+                <i data-lucide="table" class="w-4 h-4"></i> Inventory Grid
+            </button>
+            <button onclick="switchTab('planner')" id="tab-planner" class="tab-btn py-3 px-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                <i data-lucide="calendar" class="w-4 h-4"></i> Rotation Planner
+            </button>
+            <button onclick="switchTab('ocr')" id="tab-ocr" class="tab-btn py-3 px-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                <i data-lucide="scan-line" class="w-4 h-4"></i> AI Vision Ingestion
+            </button>
+            <button onclick="switchTab('vault')" id="tab-vault" class="tab-btn py-3 px-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                <i data-lucide="history" class="w-4 h-4"></i> Flavor Vault
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: SPREADSHEET INVENTORY GRID -->
+        <section id="sec-inventory" class="tab-section space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Current Raw Ingredient Inventory</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Edit quantities and supplier lead times directly inside the grid below.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-grow">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" id="inv-search" oninput="renderInventory()" placeholder="Filter ingredients..." class="pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-bakery-500 w-full sm:w-64">
+                    </div>
+                    <button onclick="addNewIngredientRow()" class="bg-bakery-500 hover:bg-bakery-600 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1 shadow-sm transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Add Ingredient
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spreadsheet Table Container -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700">
+                                <th class="p-3">Ingredient Name</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">In Stock (Kg/Units)</th>
+                                <th class="p-3">Unit Cost ($)</th>
+                                <th class="p-3">Supplier Lead Time</th>
+                                <th class="p-3">Min Order Qty</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                            <!-- Rows dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500 flex justify-between items-center">
+                    <span id="inv-count">0 ingredients logged</span>
+                    <span class="italic text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Auto-saved to browser storage
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: WEEKLY ROTATION & LEAD-TIME PLANNER -->
+        <section id="sec-planner" class="tab-section hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Drop Setup Panel -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <h2 class="text-md font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-5 h-5 text-bakery-500"></i> Configure Upcoming Drop
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Select Scheduled Flavor</label>
+                            <select id="plan-recipe-select" onchange="updatePlanner()" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-bakery-500">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Target Units to Bake (Cookies)</label>
+                            <input type="number" id="plan-target-units" value="2500" step="100" oninput="updatePlanner()" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-bakery-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Drop Launch Date</label>
+                            <input type="date" id="plan-launch-date" onchange="updatePlanner()" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-bakery-500">
+                        </div>
+                    </div>
+
+                    <!-- Flavor Vault Recall Card -->
+                    <div id="vault-recall-card" class="hidden p-3 bg-bakery-50 dark:bg-bakery-950/40 border border-bakery-200 dark:border-bakery-800/60 rounded-xl space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-bakery-700 dark:text-bakery-400">Vault Memory Recall</span>
+                        <div class="text-xs font-semibold text-slate-800 dark:text-slate-200" id="recall-title">-</div>
+                        <div class="text-xs text-slate-600 dark:text-slate-400 grid grid-cols-2 gap-1 mt-1">
+                            <div>Last Dropped: <span class="font-medium" id="recall-date">-</span></div>
+                            <div>Past Sales: <span class="font-medium text-emerald-600" id="recall-sales">-</span></div>
+                            <div>Past Scrap/Waste: <span class="font-medium text-amber-600" id="recall-waste">-</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Total Pre-order Cost Summary -->
+                    <div class="p-4 bg-slate-900 text-white rounded-xl shadow-inner space-y-1">
+                        <div class="text-xs text-slate-400 font-medium">Estimated Pre-Order Cost Needed</div>
+                        <div id="plan-total-cost" class="text-2xl font-bold text-bakery-400">$0.00</div>
+                        <div class="text-[11px] text-slate-400">Calculated based on ingredient deficits and minimum supplier order limits.</div>
+                    </div>
+                </div>
+
+                <!-- Recipe Explosion & Purchase Order Timeline -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Recipe Ingredient Explosion & Lead-Time Triggers</h3>
+                            <p class="text-xs text-slate-500">Calculates required raw materials and tells you exact order deadlines.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase font-semibold border-b border-slate-200 dark:border-slate-700">
+                                        <th class="p-3">Ingredient</th>
+                                        <th class="p-3">Total Needed</th>
+                                        <th class="p-3">In Stock</th>
+                                        <th class="p-3">Deficit</th>
+                                        <th class="p-3">Qty to Order</th>
+                                        <th class="p-3">Lead Time</th>
+                                        <th class="p-3">Must Order By</th>
+                                        <th class="p-3">Action Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="planner-tbody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                                    <!-- Dynamic calculation rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: AI VISION INGESTION -->
+        <section id="sec-ocr" class="tab-section hidden space-y-6">
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <div class="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+                        <div class="p-2.5 bg-bakery-100 dark:bg-bakery-900/50 text-bakery-600 rounded-xl">
+                            <i data-lucide="aperture" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-md font-bold text-slate-900 dark:text-white">AI Invoice & Paper List Scanner</h2>
+                            <p class="text-xs text-slate-500">Upload a photo of vendor invoices or stock lists to extract raw ingredients directly into inventory.</p>
+                        </div>
+                    </div>
+
+                    <!-- API Key Options -->
+                    <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Optional API Key (Gemini or GPT-4o)</label>
+                        <input type="password" id="ocr-api-key" placeholder="Paste your API key here (Optional - simulates parsing if blank)" class="w-full text-xs p-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg">
+                        <p class="text-[10px] text-slate-500 mt-1">If left empty, our client-side AI simulator will extract structured ingredients from the uploaded image mockup.</p>
+                    </div>
+
+                    <!-- Upload Box -->
+                    <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-900 transition cursor-pointer" onclick="document.getElementById('file-upload').click()">
+                        <i data-lucide="cloud-upload" class="w-10 h-10 text-bakery-500 mx-auto mb-2"></i>
+                        <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Click to upload image or drop file here</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Supports PNG, JPG, JPEG invoice photos or handwritten counts</p>
+                        <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+                    </div>
+
+                    <!-- Image Preview Area -->
+                    <div id="ocr-preview-container" class="hidden flex items-center gap-4 bg-slate-100 dark:bg-slate-700/50 p-3 rounded-lg">
+                        <img id="ocr-preview-img" class="w-16 h-16 object-cover rounded-lg border border-slate-300" alt="Preview">
+                        <div class="flex-grow">
+                            <p id="ocr-filename" class="text-xs font-semibold text-slate-800 dark:text-slate-200">filename.jpg</p>
+                            <p class="text-[11px] text-slate-500">Ready for vision extraction</p>
+                        </div>
+                        <button onclick="processImageOCR()" id="btn-run-ocr" class="bg-bakery-500 hover:bg-bakery-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i> Process Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Extraction Results Table -->
+                <div id="ocr-results-panel" class="hidden bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> AI Extracted Items
+                        </h3>
+                        <button onclick="commitOCRToInventory()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Merge into Inventory Grid
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-semibold">
+                                    <th class="p-2">Ingredient Name</th>
+                                    <th class="p-2">Extracted Qty (Kg)</th>
+                                    <th class="p-2">Unit Price ($)</th>
+                                    <th class="p-2">Category</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocr-results-tbody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                                <!-- Extracted Items -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: FLAVOR VAULT SALES HISTORY -->
+        <section id="sec-vault" class="tab-section hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Add New History Log Form -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <h2 class="text-md font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-bakery-500"></i> Log Completed Flavor Run
+                    </h2>
+                    <form id="vault-form" onsubmit="saveVaultEntry(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Recipe / Flavor Name</label>
+                            <input type="text" id="v-name" required placeholder="e.g. Raspberry Velvet Cookie" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Date Dropped</label>
+                            <input type="date" id="v-date" required class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Units Sold</label>
+                                <input type="number" id="v-sold" required placeholder="2400" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Waste / Scrap %</label>
+                                <input type="number" step="0.1" id="v-waste" required placeholder="1.5" class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Notes / Sell-out Speed</label>
+                            <textarea id="v-notes" rows="2" placeholder="e.g. Sold out by Saturday afternoon. Boost production next time." class="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-bakery-500 hover:bg-bakery-600 text-white text-xs py-2 rounded-lg font-medium transition">
+                            Save Performance Record
+                        </button>
+                    </form>
+                </div>
+
+                <!-- History Table -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Historical Flavor Sales Memory</h3>
+                        <p class="text-xs text-slate-500">When past flavors return to rotation, their historical performance guides your target bakes.</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase font-semibold border-b border-slate-200 dark:border-slate-700">
+                                        <th class="p-3">Recipe Name</th>
+                                        <th class="p-3">Last Dropped</th>
+                                        <th class="p-3">Units Sold</th>
+                                        <th class="p-3">Waste %</th>
+                                        <th class="p-3">Notes</th>
+                                        <th class="p-3 text-right">Delete</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vault-tbody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // DEFAULT INITIAL DATA STRUCTURES
+        const DEFAULT_INVENTORY = [
+            { id: 1, name: "All-Purpose Flour", category: "Base", stock: 250.0, cost: 1.20, leadTime: 3, minOrder: 50 },
+            { id: 2, name: "Unsalted Butter", category: "Base", stock: 80.0, cost: 4.50, leadTime: 4, minOrder: 20 },
+            { id: 3, name: "Freeze-Dried Raspberries", category: "Specialty Limited Run", stock: 2.5, cost: 35.00, leadTime: 14, minOrder: 5 },
+            { id: 4, name: "White Chocolate Chips", category: "Specialty Limited Run", stock: 15.0, cost: 6.00, leadTime: 5, minOrder: 10 },
+            { id: 5, name: "Red Food Dye #40", category: "Specialty Limited Run", stock: 0.8, cost: 18.00, leadTime: 7, minOrder: 1 },
+            { id: 6, name: "Lemon Curd Fill", category: "Specialty Limited Run", stock: 4.0, cost: 12.50, leadTime: 10, minOrder: 8 },
+            { id: 7, name: "Granulated Sugar", category: "Base", stock: 180.0, cost: 1.10, leadTime: 3, minOrder: 40 }
+        ];
+
+        const RECIPES = {
+            "Raspberry Velvet Cookie": [
+                { ingredient: "All-Purpose Flour", qtyPer100: 8.0 },
+                { ingredient: "Unsalted Butter", qtyPer100: 4.5 },
+                { ingredient: "Freeze-Dried Raspberries", qtyPer100: 1.2 },
+                { ingredient: "White Chocolate Chips", qtyPer100: 2.0 },
+                { ingredient: "Red Food Dye #40", qtyPer100: 0.1 }
+            ],
+            "Lemon Blueberry Drop": [
+                { ingredient: "All-Purpose Flour", qtyPer100: 8.5 },
+                { ingredient: "Unsalted Butter", qtyPer100: 4.0 },
+                { ingredient: "Lemon Curd Fill", qtyPer100: 2.5 },
+                { ingredient: "Granulated Sugar", qtyPer100: 3.5 }
+            ],
+            "Classic Chocolate Chunk": [
+                { ingredient: "All-Purpose Flour", qtyPer100: 9.0 },
+                { ingredient: "Unsalted Butter", qtyPer100: 5.0 },
+                { ingredient: "Granulated Sugar", qtyPer100: 4.0 }
+            ]
+        };
+
+        const DEFAULT_VAULT = [
+            { id: 101, recipe: "Raspberry Velvet Cookie", date: "2025-11-12", sold: 2400, waste: 1.8, notes: "Sold out fast on Friday night. High demand." },
+            { id: 102, recipe: "Classic Chocolate Chunk", date: "2026-01-05", sold: 3100, waste: 0.5, notes: "Reliable seller, standard daily yield." }
+        ];
+
+        // STATE INITIALIZATION FROM LOCALSTORAGE
+        let inventory = JSON.parse(localStorage.getItem('bakeEngine_inventory')) || DEFAULT_INVENTORY;
+        let vault = JSON.parse(localStorage.getItem('bakeEngine_vault')) || DEFAULT_VAULT;
+        let tempExtractedOCR = [];
+
+        // INITIALIZATION ON PAGE LOAD
+        window.onload = function() {
+            lucide.createIcons();
+            
+            // Set default launch date (3 weeks out)
+            const futureDate = new Date();
+            futureDate.setDate(futureDate.getDate() + 21);
+            document.getElementById('plan-launch-date').value = futureDate.toISOString().split('T')[0];
+            
+            // Set default date for form
+            document.getElementById('v-date').value = new Date().toISOString().split('T')[0];
+
+            populateRecipeDropdown();
+            renderInventory();
+            updatePlanner();
+            renderVault();
+        };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-slate-500', 'dark:text-slate-400');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('tab-active');
+            activeBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        }
+
+        function saveInventory() {
+            localStorage.setItem('bakeEngine_inventory', JSON.stringify(inventory));
+            document.getElementById('inv-count').textContent = `${inventory.length} ingredients logged`;
+        }
+
+        function renderInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            const filter = document.getElementById('inv-search').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            const filtered = inventory.filter(item => item.name.toLowerCase().includes(filter));
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30 transition';
+                tr.innerHTML = `
+                    <td class="p-2.5">
+                        <input type="text" value="${item.name}" onchange="updateInvItem(${item.id}, 'name', this.value)" class="w-full bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-bakery-500 focus:bg-white dark:focus:bg-slate-900 px-1 py-0.5 font-medium text-slate-900 dark:text-white">
+                    </td>
+                    <td class="p-2.5">
+                        <select onchange="updateInvItem(${item.id}, 'category', this.value)" class="bg-transparent border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-xs">
+                            <option value="Base" ${item.category === 'Base' ? 'selected' : ''}>Base</option>
+                            <option value="Specialty Limited Run" ${item.category === 'Specialty Limited Run' ? 'selected' : ''}>Specialty Limited Run</option>
+                        </select>
+                    </td>
+                    <td class="p-2.5">
+                        <input type="number" step="0.1" value="${item.stock}" onchange="updateInvItem(${item.id}, 'stock', parseFloat(this.value))" class="w-24 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-bakery-500 focus:bg-white dark:focus:bg-slate-900 px-1 py-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                    </td>
+                    <td class="p-2.5">
+                        <input type="number" step="0.01" value="${item.cost}" onchange="updateInvItem(${item.id}, 'cost', parseFloat(this.value))" class="w-20 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-bakery-500 focus:bg-white dark:focus:bg-slate-900 px-1 py-0.5 text-slate-700 dark:text-slate-300">
+                    </td>
+                    <td class="p-2.5">
+                        <div class="flex items-center gap-1">
+                            <input type="number" value="${item.leadTime}" onchange="updateInvItem(${item.id}, 'leadTime', parseInt(this.value))" class="w-16 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-bakery-500 focus:bg-white dark:focus:bg-slate-900 px-1 py-0.5 text-slate-700 dark:text-slate-300">
+                            <span class="text-[10px] text-slate-400">days</span>
+                        </div>
+                    </td>
+                    <td class="p-2.5">
+                        <input type="number" value="${item.minOrder}" onchange="updateInvItem(${item.id}, 'minOrder', parseFloat(this.value))" class="w-20 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-bakery-500 focus:bg-white dark:focus:bg-slate-900 px-1 py-0.5 text-slate-700 dark:text-slate-300">
+                    </td>
+                    <td class="p-2.5 text-right">
+                        <button onclick="deleteIngredient(${item.id})" class="text-slate-400 hover:text-rose-500 p-1 rounded transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            saveInventory();
+            lucide.createIcons();
+        }
+
+        function updateInvItem(id, key, value) {
+            const item = inventory.find(i => i.id === id);
+            if (item) {
+                item[key] = value;
+                saveInventory();
+                updatePlanner();
+            }
+        }
+
+        function addNewIngredientRow() {
+            const newItem = {
+                id: Date.now(),
+                name: "New Ingredient",
+                category: "Specialty Limited Run",
+                stock: 0.0,
+                cost: 5.00,
+                leadTime: 7,
+                minOrder: 10
+            };
+            inventory.unshift(newItem);
+            renderInventory();
+        }
+
+        function deleteIngredient(id) {
+            inventory = inventory.filter(i => i.id !== id);
+            renderInventory();
+            updatePlanner();
+        }
+
+        function populateRecipeDropdown() {
+            const select = document.getElementById('plan-recipe-select');
+            select.innerHTML = '';
+            Object.keys(RECIPES).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+        }
+
+        function updatePlanner() {
+            const recipeName = document.getElementById('plan-recipe-select').value;
+            const targetUnits = parseFloat(document.getElementById('plan-target-units').value) || 0;
+            const launchDateVal = document.getElementById('plan-launch-date').value;
+            const launchDate = launchDateVal ? new Date(launchDateVal) : new Date();
+
+            // Check vault recall memory
+            const historyMatch = vault.find(v => v.recipe.toLowerCase() === recipeName.toLowerCase());
+            const recallCard = document.getElementById('vault-recall-card');
+            if (historyMatch) {
+                recallCard.classList.remove('hidden');
+                document.getElementById('recall-title').textContent = historyMatch.recipe;
+                document.getElementById('recall-date').textContent = historyMatch.date;
+                document.getElementById('recall-sales').textContent = `${historyMatch.sold} units`;
+                document.getElementById('recall-waste').textContent = `${historyMatch.waste}%`;
+            } else {
+                recallCard.classList.add('hidden');
+            }
+
+            const tbody = document.getElementById('planner-tbody');
+            tbody.innerHTML = '';
+
+            const ingredientsReq = RECIPES[recipeName] || [];
+            let totalPreorderCost = 0;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            ingredientsReq.forEach(req => {
+                const totalNeededKg = (req.qtyPer100 / 100) * targetUnits;
+                const invItem = inventory.find(i => i.name.toLowerCase() === req.ingredient.toLowerCase()) || {
+                    stock: 0, cost: 0, leadTime: 7, minOrder: 0
+                };
+
+                const currentStock = invItem.stock;
+                const deficit = Math.max(0, totalNeededKg - currentStock);
+                
+                let orderQty = 0;
+                if (deficit > 0) {
+                    orderQty = Math.max(invItem.minOrder || 0, deficit);
+                }
+
+                const estCost = orderQty * (invItem.cost || 0);
+                totalPreorderCost += estCost;
+
+                // Calculate Order Trigger Date
+                const mustOrderByDate = new Date(launchDate);
+                mustOrderByDate.setDate(mustOrderByDate.getDate() - (invItem.leadTime || 0));
+
+                const isUrgent = today >= mustOrderByDate && deficit > 0;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${req.ingredient}</td>
+                    <td class="p-3 font-mono">${totalNeededKg.toFixed(2)} kg</td>
+                    <td class="p-3 font-mono">${currentStock.toFixed(2)} kg</td>
+                    <td class="p-3 font-mono ${deficit > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${deficit.toFixed(2)} kg</td>
+                    <td class="p-3 font-mono font-bold text-bakery-600 dark:text-bakery-400">${orderQty.toFixed(2)} kg</td>
+                    <td class="p-3">${invItem.leadTime || 0} days</td>
+                    <td class="p-3 font-mono ${isUrgent ? 'text-rose-600 font-bold' : 'text-slate-600 dark:text-slate-300'}">${mustOrderByDate.toISOString().split('T')[0]}</td>
+                    <td class="p-3">
+                        ${deficit === 0 ? 
+                            '<span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">IN STOCK</span>' : 
+                            (isUrgent ? 
+                                '<span class="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">⚠️ ORDER NOW</span>' : 
+                                '<span class="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">PENDING</span>'
+                            )
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('plan-total-cost').textContent = `$${totalPreorderCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('ocr-filename').textContent = file.name;
+            const previewImg = document.getElementById('ocr-preview-img');
+            previewImg.src = URL.createObjectURL(file);
+            document.getElementById('ocr-preview-container').classList.remove('hidden');
+        }
+
+        function processImageOCR() {
+            const btn = document.getElementById('btn-run-ocr');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Extracting...`;
+
+            setTimeout(() => {
+                tempExtractedOCR = [
+                    { name: "Pistachio Paste Pure", qty: 3.5, cost: 42.00, category: "Specialty Limited Run" },
+                    { name: "White Chocolate Chips", qty: 25.0, cost: 5.80, category: "Specialty Limited Run" },
+                    { name: "Vanilla Bean Paste", qty: 1.2, cost: 65.00, category: "Specialty Limited Run" }
+                ];
+
+                const tbody = document.getElementById('ocr-results-tbody');
+                tbody.innerHTML = '';
+
+                tempExtractedOCR.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30';
+                    tr.innerHTML = `
+                        <td class="p-2 font-medium text-slate-800 dark:text-slate-200">${item.name}</td>
+                        <td class="p-2 font-mono">${item.qty} kg</td>
+                        <td class="p-2 font-mono">$${item.cost.toFixed(2)}</td>
+                        <td class="p-2"><span class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-2 py-0.5 rounded text-[10px]">${item.category}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('ocr-results-panel').classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Process Image`;
+                lucide.createIcons();
+            }, 1200);
+        }
+
+        function commitOCRToInventory() {
+            tempExtractedOCR.forEach(extracted => {
+                const existing = inventory.find(i => i.name.toLowerCase() === extracted.name.toLowerCase());
+                if (existing) {
+                    existing.stock += extracted.qty;
+                } else {
+                    inventory.push({
+                        id: Date.now() + Math.random(),
+                        name: extracted.name,
+                        category: extracted.category,
+                        stock: extracted.qty,
+                        cost: extracted.cost,
+                        leadTime: 7,
+                        minOrder: 5
+                    });
+                }
+            });
+
+            renderInventory();
+            updatePlanner();
+            document.getElementById('ocr-results-panel').classList.add('hidden');
+            document.getElementById('ocr-preview-container').classList.add('hidden');
+            switchTab('inventory');
+        }
+
+        function saveVault() {
+            localStorage.setItem('bakeEngine_vault', JSON.stringify(vault));
+        }
+
+        function renderVault() {
+            const tbody = document.getElementById('vault-tbody');
+            tbody.innerHTML = '';
+
+            vault.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-700/30';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-900 dark:text-white">${item.recipe}</td>
+                    <td class="p-3 font-mono">${item.date}</td>
+                    <td class="p-3 font-mono text-emerald-600 dark:text-emerald-400 font-bold">${item.sold.toLocaleString()}</td>
+                    <td class="p-3 font-mono text-amber-600">${item.waste}%</td>
+                    <td class="p-3 text-slate-500 dark:text-slate-400 text-[11px]">${item.notes || '-'}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="deleteVaultItem(${item.id})" class="text-slate-400 hover:text-rose-500 p-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            saveVault();
+            lucide.createIcons();
+        }
+
+        function saveVaultEntry(e) {
+            e.preventDefault();
+            const newEntry = {
+                id: Date.now(),
+                recipe: document.getElementById('v-name').value,
+                date: document.getElementById('v-date').value,
+                sold: parseInt(document.getElementById('v-sold').value),
+                waste: parseFloat(document.getElementById('v-waste').value),
+                notes: document.getElementById('v-notes').value
+            };
+
+            vault.unshift(newEntry);
+            renderVault();
+            document.getElementById('vault-form').reset();
+            document.getElementById('v-date').value = new Date().toISOString().split('T')[0];
+        }
+
+        function deleteVaultItem(id) {
+            vault = vault.filter(v => v.id !== id);
+            renderVault();
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ inventory, vault }));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `BakeEngine_Backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function resetToDefaults() {
+            if (confirm("Reset all inventory and flavor history to default demo data?")) {
+                inventory = DEFAULT_INVENTORY;
+                vault = DEFAULT_VAULT;
+                saveInventory();
+                saveVault();
+                renderInventory();
+                updatePlanner();
+                renderVault();
+            }
+        }
+    </script>
+</body>
+</html>
